@@ -1,0 +1,33 @@
+# Example GitHub Action Workflow using Azure OIDC (No secrets/passwords needed!)
+name: Terraform Apply (Azure OIDC)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    
+    # Required for ID Token generation (important!)
+    permissions:
+      id-token: 'write'
+      contents: 'read'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Authenticate to Azure using OIDC
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          # Use the IDs from Terraform outputs
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Now all subsequent az-cli or terraform commands are authenticated!
+      - name: Terraform Plan
+        run: |
+          terraform init
+          terraform plan

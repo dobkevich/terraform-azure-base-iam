@@ -1,0 +1,81 @@
+AZURE CI/CD CONFIGURATION GUIDE (WORKLOAD IDENTITY FEDERATION)
+==============================================================
+
+Overview:
+---------
+Using Client Secrets (passwords) for Azure Service Principals in GitHub 
+Secrets is insecure and requires manual rotation. This project uses Workload 
+Identity Federation (OIDC) to allow GitHub Actions to securely access Azure 
+resources without secrets.
+
+This approach is the Azure equivalent of GCP's Workload Identity Federation (WIF).
+
+Prerequisites:
+--------------
+1. An Azure Subscription and Tenant.
+2. The 'azurerm' and 'azuread' Terraform providers (v4.0/v3.0 or higher).
+3. A GitHub repository where your CI/CD will run.
+
+Step 1: Infrastructure Configuration (Terraform)
+------------------------------------------------
+The file 'iam_cicd.tf' defines a Federated Identity Credential. This 
+credential tells Azure Active Directory (Entra ID) to trust the OIDC token 
+issued by GitHub Actions for your specific repository.
+
+The credential is tied to the 'automation_app' defined in 'iam_admin.tf'.
+
+Update 'variables.tf' with your GitHub repository path:
+variable "github_repository" {
+  default = "your-github-user/your-github-repo"
+}
+
+Step 2: Apply the Configuration
+-------------------------------
+Run the following commands to create the federation infrastructure:
+$ terraform init
+$ terraform apply
+
+Note the outputs: 'azure_client_id' and 'azure_tenant_id'.
+
+Step 3: GitHub Actions Setup
+----------------------------
+In your GitHub repository, create three secrets (optional, but cleaner) or 
+use them directly in your workflow:
+* AZURE_CLIENT_ID (Application ID of automation_app)
+* AZURE_TENANT_ID (Your Directory ID)
+* AZURE_SUBSCRIPTION_ID (Your Subscription ID)
+
+Use the provided 'cicd_github_action.yaml' as a template.
+
+Crucial Job Settings:
+1. permissions:
+     id-token: write  # Required for requesting the JWT from GitHub
+     contents: read   # Required for checkout
+
+2. Authentication Step:
+   - uses: azure/login@v2
+     with:
+       client-id: ${{ secrets.AZURE_CLIENT_ID }}
+       tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+       subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+How It Works:
+-------------
+1. GitHub generates a short-lived OIDC token for the job.
+2. Azure AD verifies this token against the Federated Credential settings.
+3. If the repository and branch match, Azure issues a temporary access token 
+   for the Service Principal.
+4. Subsequent steps (az cli, terraform) use this temporary token.
+
+Security Benefits:
+------------------
+* No Client Secrets stored in GitHub.
+* Access is automatically revoked when the CI/CD job finishes.
+* No maintenance of secret rotation is required.
+
+Troubleshooting:
+----------------
+* Authorization Failed: Ensure the 'subject' in 'iam_cicd.tf' matches your 
+  repository and branch (e.g., repo:owner/repo:ref:refs/heads/main).
+* Tenant ID Mismatch: Ensure 'AZURE_TENANT_ID' matches the tenant where your 
+  Service Principal was created.

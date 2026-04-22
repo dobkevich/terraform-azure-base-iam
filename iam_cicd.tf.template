@@ -1,0 +1,25 @@
+# Azure Workload Identity Federation (OIDC) for GitHub Actions
+# Analog to WIF in GCP and OIDC Provider in AWS
+
+# Configure the federated identity credential for the existing automation application
+resource "azuread_application_federated_identity_credential" "github" {
+  application_id = azuread_application.automation_app.id
+  display_name   = "GitHubActions"
+  description    = "Federated identity for GitHub Actions OIDC"
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  
+  # Condition: Only allow specific repository to assume this identity
+  subject        = "repo:${var.github_repository}:ref:refs/heads/main"
+}
+
+# Output the IDs needed for GitHub Actions
+output "azure_client_id" {
+  description = "The Client ID of the automation application."
+  value       = azuread_application.automation_app.client_id
+}
+
+output "azure_tenant_id" {
+  description = "The Tenant ID for Azure AD."
+  value       = data.azuread_domains.primary.domains[0].id # Or use data.azurerm_client_config.current.tenant_id
+}
