@@ -1,4 +1,4 @@
-# Azure IAM & GitHub CI/CD Terraform Project
+# Terraform Configuration for Azure IAM with OIDC Federation for GitHub Actions CI/CD
 
 This project provides a comprehensive Terraform configuration for managing Identity and Access Management (IAM) in Microsoft Azure and Microsoft Entra ID (formerly Azure AD). It is designed to automate the creation of users, service principals, and role assignments, with a specific focus on secure CI/CD integration using Workload Identity Federation.
 
